@@ -5,6 +5,7 @@
       <li><a href="$base$/">Front page</a></li>
       <li><a href="$base$/_index">All pages</a></li>
       <li><a href="$base$/_categories">Categories</a></li>
+      <li><a href="$base$/advisor/consult.html">Aspire advisor</a></li>
       <li><a href="$base$/_random">Random page</a></li>
       <li><a href="$base$/_activity">Recent activity</a></li>
       $if(wikiupload)$

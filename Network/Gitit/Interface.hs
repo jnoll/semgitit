@@ -116,7 +116,12 @@ module Network.Gitit.Interface ( Plugin(..)
                                , askRequest
                                , askFileStore
                                , askMeta
+                               , askText
+                               , askFile
                                , doNotCache
+                               , findPages
+                               , getPageContents
+                               , getPageContentsAndRev
                                , getContext
                                , modifyContext
                                , inlinesToURL
@@ -130,14 +135,20 @@ where
 import Text.Pandoc.Definition
 import Text.Pandoc.Generic
 import Data.Data
+import Data.Maybe (fromMaybe, mapMaybe, isJust, catMaybes)
 import Network.Gitit.Types
 import Network.Gitit.ContentTransformer
 import Network.Gitit.Util (withTempDir)
+import Network.Gitit.Page (parseMetadata, readMetadata)
 import Network.Gitit.Server (Request(..))
+import Network.Gitit.Framework (isPageFile, isDiscussPageFile, pathForPage)
+import Control.Exception (throwIO, catch, try)
+import Prelude hiding (catch)
 import Control.Monad.Reader (ask)
 import Control.Monad.Trans (liftIO)
-import Control.Monad (liftM)
-import Data.FileStore (FileStore)
+import Control.Monad (liftM, forM)
+import Data.FileStore (FileStore, FileStoreError(..), Revision(..), index, retrieve, latest, revision)
+import System.FilePath (dropExtension, takeExtension, (<.>), (</>))
 
 -- | Returns the current wiki configuration.
 askConfig :: PluginM Config
@@ -159,6 +170,14 @@ askFileStore = liftM pluginFileStore ask
 askMeta :: PluginM [(String, String)]
 askMeta = liftM ctxMeta getContext
 
+-- | Returns the page text (for editing)
+askText :: PluginM String
+askText = liftM ctxText getContext
+
+-- | $jn - Return the page file path
+askFile :: PluginM String
+askFile = liftM ctxFile getContext
+
 -- | Indicates that the current page or file is not to be cached.
 doNotCache :: PluginM ()
 doNotCache = modifyContext (\ctx -> ctx{ ctxCacheable = False })
@@ -173,4 +192,43 @@ mkPageTransform fn = PageTransform $ return . bottomUp fn
 -- Lifts a function from @a -> m a@ to a 'PageTransform' plugin.
 mkPageTransformM :: Data a => (a -> PluginM a) -> Plugin
 mkPageTransformM =  PageTransform . bottomUpM
+
+
+findPages :: String -> String -> PluginM [String]
+findPages key val = do
+  cfg <- askConfig
+  let repoPath = repositoryPath cfg
+  fs <- askFileStore
+  files <- liftIO $ index fs
+  let pages = filter (\f -> isPageFile f && not (isDiscussPageFile f)) files
+  liftM catMaybes $
+             forM pages $ \f -> do
+               md <- liftIO $ readMetadata $ repoPath </> f
+               let entry = fromMaybe "" $ lookup key md
+               return $ if val == entry
+                           then Just $ dropExtension f
+                           else Nothing
+
+-- This is right out of editPage :(
+getPageContentsAndRev :: String -> PluginM  (String, String)
+getPageContentsAndRev page = do
+  fs <- askFileStore
+  let getRevisionAndText = catch
+        (do c <- liftIO $ retrieve fs (pathForPage page) Nothing
+            r <- liftIO $ latest fs (pathForPage page) >>= revision fs
+            return (Just $ revId r, c))
+        (\e -> if e == NotFound
+                  then return (Nothing, "")
+                  else throwIO e)
+
+  (rev, contents) <- liftIO getRevisionAndText
+  case rev of
+    Just r -> return (r, contents)
+    Nothing -> return ("", contents)
+  
+getPageContents :: String -> PluginM String
+getPageContents page = do
+  (_, c) <- getPageContentsAndRev page
+  return c
+
 

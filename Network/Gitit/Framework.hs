@@ -256,7 +256,10 @@ isPage s = all (`notElem` "*?") s && not (".." `isInfixOf` s) && not ("/_" `isIn
 -- does not deal with them properly, and darcs filestore disallows them.
 
 isPageFile :: FilePath -> Bool
-isPageFile f = takeExtension f == ".page"
+isPageFile f = 
+  let ext = takeExtension f 
+  in any (\x -> ext == x) [".page", ".txt", ".xml"]
+
 
 isDiscussPage :: String -> Bool
 isDiscussPage ('@':xs) = isPage xs

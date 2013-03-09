@@ -1,0 +1,5 @@
+2013-02-23  John Noll  <jhnoll@gmail.com>
+
+	* gitit.cabal: moved Network.Gitit.Page from other-modules to
+	exposed-modules, so parseMetadata is visible to plugins.
+
