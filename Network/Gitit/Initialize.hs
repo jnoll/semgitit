@@ -192,7 +192,7 @@ createStaticIfMissing conf = do
     createDirectoryIfMissing True jsdir
     jsDataDir <- getDataFileName $ "data" </> "static" </> "js"
 --    javascripts <- liftM (filter (`notElem` [".", ".."])) $ getDirectoryContents jsDataDir
-    forM_ ["create.js", "footnotes.js"] $ \f -> do
+    forM_ ["footnotes.js"] $ \f -> do
       copyFile (jsDataDir </> f) (jsdir </> f)
       logM "gitit" WARNING $ "Created " ++ (jsdir </> f)
 

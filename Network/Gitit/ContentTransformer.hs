@@ -124,7 +124,7 @@ runTransformer pathFor xform = withData $ \params -> do
                            , ctxTOC = tableOfContents cfg
                            , ctxBirdTracks = showLHSBirdTracks cfg
                            , ctxCategories = []
-                           , ctxMeta = [] 
+                           , ctxMeta = pMetaAttrs params 
                            , ctxText = "" }
 
 -- | Converts a @ContentTransformer@ into a @GititServerPart@;

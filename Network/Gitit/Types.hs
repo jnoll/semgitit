@@ -272,7 +272,7 @@ data Params = Params { pUsername     :: String
                      , pGotoPage     :: String
                      , pFileToDelete :: String
                      , pEditedText   :: Maybe String
-                     , pMetaAttrs    :: [(String, Either FilePath String)]
+                     , pMetaAttrs    :: [(String, String)]
                      , pMessages     :: [String]
                      , pFrom         :: Maybe String
                      , pTo           :: Maybe String
@@ -300,6 +300,15 @@ instance FromReqURI [String] where
                                         ((xs,""):_) -> xs
                                         _           -> Nothing
                       Nothing             -> Nothing
+
+fromPair :: (String,  Either FilePath String) -> (String, String)
+fromPair (k, v) = (k, valueOf v)
+
+stripMeta :: [(String, Either FilePath String)] -> [(String, String)] -> [(String, String)]
+stripMeta [] l = reverse l
+stripMeta ((k, v):ls) ms  =   case stripPrefix "meta_" k of
+  Just rest -> stripMeta ls ((rest, valueOf v):ms)
+  Nothing -> stripMeta ls ms
 
 isMeta :: (String, Either FilePath String) -> Bool
 isMeta (key, val) = 
@@ -371,7 +380,7 @@ instance FromData Params where
                          , pFrom         = fm
                          , pTo           = to
                          , pEditedText   = et
-                         , pMetaAttrs    = (filter isMeta metas)
+                         , pMetaAttrs    = stripMeta metas []
                          , pFormat       = fo
                          , pSHA1         = sh
                          , pLogMsg       = lm

@@ -507,7 +507,6 @@ editPage' params = do
                                                then Nothing
                                                else Just (pSHA1 params)
                                     in return (r, t)
-  let (metaData, contents) = parseMetadata raw 
   let messages = pMessages params
   let logMsg = pLogMsg params
   let sha1Box = case mbRev of
@@ -521,7 +520,6 @@ editPage' params = do
                     else []
   base' <- getWikiBase
   cfg <- getConfig
---  editArea <- applyPreEditPlugins (textarea ! ([cols "80", name "editedText", identifier "editedText"]) << raw)
   editArea <- applyPreEditPlugins raw noHtml
   let editForm = gui (base' ++ urlForPage page) ! [identifier "editform"] <<
                    [ sha1Box
@@ -607,16 +605,6 @@ deletePage = withData $ \(params :: Params) -> do
        seeOther (base' ++ "/") $ toResponse $ p << "File deleted"
      else seeOther (base' ++ urlForPage page) $ toResponse $ p << "Not deleted"
 
-
-stripMeta :: String -> String
-stripMeta s =   case stripPrefix "meta_" s of
-    Just rest -> rest
-    Nothing -> s
-
--- put the meta attributes back into contents string
-concatContents :: [(String, Either FilePath String)] -> String -> String
-concatContents mlist c = let header = foldl (\h (k, v) -> h ++ (stripMeta k) ++ ": " ++ (valueOf v) ++ "\n") "---\n" mlist in
-  header ++ "...\n" ++ c
 
 updatePage :: Handler
 updatePage = withData $ \(params :: Params) -> do

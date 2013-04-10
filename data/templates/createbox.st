@@ -9,18 +9,21 @@
 <option value="---
 format: markdown
 type: Practice
-title: {short one line title/summary of practice}
-key: {unique identifier for this practice (use '_' rather than space please)}
-categories: Practice {add other categories as appropriate}
-role: {kind(s) of staff who perform(s) this practice (name of page)}
+title: {short one line title}
+lifecyclePhase: {phase}
+domain: {product domain}
+intervention: {intervention}
+researchArea: {research area}
+conditions: {pre-conditions}
+summary: {summary}
+categories: Practice
+role: {kind(s) of staff who perform this practice (name of page)}
 tool: {tool(s) used to perform this practice (name of page)}
 requires: {required resources (inputs)}
 provides: {provided resources (outputs)}
 risks: {risks of not doing this practice}
 result: {research result from which this practice is taken (name of page)}
 publication: {publication where this practice is described (url)}
-preconditions: {rule specifying when this practice is recommended}
-summary: {brief summary to be presented in aSPIRE advisor}
 ...
 ">Practice</option>
 

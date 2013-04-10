@@ -140,7 +140,7 @@ import Network.Gitit.Types
 import Network.Gitit.ContentTransformer
 import Network.Gitit.Util (withTempDir)
 import Network.Gitit.Page (parseMetadata, readMetadata)
-import Network.Gitit.Server (Request(..))
+import Network.Gitit.Server (Request(..), withData)
 import Network.Gitit.Framework (isPageFile, isDiscussPageFile, pathForPage)
 import Control.Exception (throwIO, catch, try)
 import Prelude hiding (catch)
