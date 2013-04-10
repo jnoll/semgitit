@@ -195,13 +195,14 @@ createStaticIfMissing conf = do
     copyFile logopath $ staticdir </> "img" </> "logo.png"
     logM "gitit" WARNING $ "Created " ++ (staticdir </> "img" </> "logo.png")
 
-    {-
+
+
     let jsdir = staticdir </> "js"
     createDirectoryIfMissing True jsdir
     jsDataDir <- getDataFileName $ "data" </> "static" </> "js"
-    javascripts <- liftM (filter (`notElem` [".", ".."])) $ getDirectoryContents jsDataDir
-    forM_ javascripts $ \f -> do
+--    javascripts <- liftM (filter (`notElem` [".", ".."])) $ getDirectoryContents jsDataDir
+    forM_ ["footnotes.js"] $ \f -> do
       copyFile (jsDataDir </> f) (jsdir </> f)
       logM "gitit" WARNING $ "Created " ++ (jsdir </> f)
-    -}
+
 

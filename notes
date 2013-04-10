@@ -1,0 +1,4 @@
+<!-*-markdown-*-->
+where does pMetaAttrs (Types.hs) come from?  Are all parameters
+available here?   Line 339 is where they come from, must find out what
+lookPairs does.

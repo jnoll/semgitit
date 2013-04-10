@@ -61,15 +61,15 @@ import Network.Gitit.Feed (filestoreToXmlFeed, FeedConfig(..))
 import Network.Gitit.Util (orIfNull)
 import Network.Gitit.Cache (expireCachedFile, lookupCache, cacheContents)
 import Network.Gitit.ContentTransformer (showRawPage, showFileAsText, showPage,
-        exportPage, showHighlightedSource, preview, applyPreCommitPlugins)
-import Network.Gitit.Page (readCategories)
+        exportPage, showHighlightedSource, preview, applyPreCommitPlugins, applyPreEditPlugins)
+import Network.Gitit.Page (readCategories, parseMetadata)
 import Control.Exception (throwIO, catch, try)
 import System.FilePath
 import Prelude hiding (catch)
 import Network.Gitit.State
 import Text.XHtml hiding ( (</>), dir, method, password, rev )
 import qualified Text.XHtml as X ( method )
-import Data.List (intersperse, nub, sortBy, find, isPrefixOf, inits, sort)
+import Data.List (intersperse, nub, sortBy, find, isPrefixOf, inits, sort, stripPrefix)
 import Data.Maybe (fromMaybe, mapMaybe, isJust, catMaybes)
 import Data.Ord (comparing)
 import Data.Char (toLower, isSpace)
@@ -480,6 +480,8 @@ getDiff fs file from to = do
               " to " ++ fromMaybe "current" to) +++
            pre ! [theclass "diff"] << map diffLineToHtml rawDiff
 
+
+
 editPage :: Handler
 editPage = withData editPage'
 
@@ -518,14 +520,15 @@ editPage' params = do
                     else []
   base' <- getWikiBase
   cfg <- getConfig
+  editArea <- applyPreEditPlugins raw noHtml
   let editForm = gui (base' ++ urlForPage page) ! [identifier "editform"] <<
                    [ sha1Box
-                   , textarea ! (readonly ++ [cols "80", name "editedText",
-                                  identifier "editedText"]) << raw
+                   , editArea
                    , br
-                   , label << "Description of changes:"
+                   , label << "Description of your changes (for change log):"
                    , br
                    , textfield "logMsg" ! (readonly ++ [value logMsg])
+                   , br
                    , submit "update" "Save"
                    , primHtmlChar "nbsp"
                    , submit "cancel" "Discard"
@@ -603,6 +606,7 @@ deletePage = withData $ \(params :: Params) -> do
        seeOther (base' ++ "/") $ toResponse $ p << "File deleted"
      else seeOther (base' ++ urlForPage page) $ toResponse $ p << "Not deleted"
 
+
 updatePage :: Handler
 updatePage = withData $ \(params :: Params) -> do
   page <- getPage
@@ -613,7 +617,9 @@ updatePage = withData $ \(params :: Params) -> do
                         Just u  -> return (uUsername u, uEmail u)
   editedText <- case pEditedText params of
                      Nothing -> error "No body text in POST request"
-                     Just b  -> applyPreCommitPlugins b
+                     Just b  -> let ms = pMetaAttrs params in
+                       -- XXXjn applyPreCommitPlugins $ concatContents ms b
+                       applyPreCommitPlugins b
   let logMsg = pLogMsg params `orIfNull` defaultSummary cfg
   let oldSHA1 = pSHA1 params
   fs <- getFileStore

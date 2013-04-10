@@ -30,7 +30,7 @@ import System.Log.Logger (Priority(..))
 import Text.Pandoc.Definition (Pandoc)
 import Text.XHtml (Html)
 import qualified Data.Map as M
-import Data.List (intersect)
+import Data.List (intersect, stripPrefix)
 import Data.Time (parseTime)
 import System.Locale (defaultTimeLocale)
 import Data.FileStore.Types
@@ -193,8 +193,9 @@ data GititState = GititState {
 type ContentTransformer = StateT Context GititServerPart
 
 data Plugin = PageTransform (Pandoc -> PluginM Pandoc)
-            | PreParseTransform (String -> PluginM String)
-            | PreCommitTransform (String -> PluginM String)
+            | PreParseTransform (String -> PluginM String) 
+            | PreCommitTransform (String -> PluginM String) 
+            | PreEditTransform (Html -> PluginM Html)
 
 data PluginData = PluginData { pluginConfig    :: Config
                              , pluginUser      :: Maybe User
@@ -214,6 +215,7 @@ data Context = Context { ctxFile            :: String
                        , ctxBirdTracks      :: Bool
                        , ctxCategories      :: [String]
                        , ctxMeta            :: [(String, String)]
+                       , ctxText            :: String
                        }
 
 class (Monad m) => HasContext m where
@@ -272,6 +274,7 @@ data Params = Params { pUsername     :: String
                      , pGotoPage     :: String
                      , pFileToDelete :: String
                      , pEditedText   :: Maybe String
+                     , pMetaAttrs    :: [(String, String)]
                      , pMessages     :: [String]
                      , pFrom         :: Maybe String
                      , pTo           :: Maybe String
@@ -300,6 +303,27 @@ instance FromReqURI [String] where
                                         _           -> Nothing
                       Nothing             -> Nothing
 
+fromPair :: (String,  Either FilePath String) -> (String, String)
+fromPair (k, v) = (k, valueOf v)
+
+stripMeta :: [(String, Either FilePath String)] -> [(String, String)] -> [(String, String)]
+stripMeta [] l = reverse l
+stripMeta ((k, v):ls) ms  =   case stripPrefix "meta_" k of
+  Just rest -> stripMeta ls ((rest, valueOf v):ms)
+  Nothing -> stripMeta ls ms
+
+isMeta :: (String, Either FilePath String) -> Bool
+isMeta (key, val) = 
+  case stripPrefix "meta_" key of
+    Just _ -> True
+    Nothing -> False
+
+-- get the value part of an Either
+valueOf :: Either FilePath String -> String
+valueOf v = case v of
+  Left fp -> fp
+  Right str -> str
+
 instance FromData Params where
      fromData = do
          let look' = look
@@ -323,6 +347,7 @@ instance FromData Params where
          to <- liftM Just (look' "to")   `mplus` return Nothing
          et <- liftM (Just . filter (/='\r')) (look' "editedText")
                  `mplus` return Nothing
+         metas <- lookPairs `mplus` return []
          fo <- look' "format"         `mplus` return ""
          sh <- look' "sha1"           `mplus` return ""
          lm <- look' "logMsg"         `mplus` return ""
@@ -357,6 +382,7 @@ instance FromData Params where
                          , pFrom         = fm
                          , pTo           = to
                          , pEditedText   = et
+                         , pMetaAttrs    = stripMeta metas []
                          , pFormat       = fo
                          , pSHA1         = sh
                          , pLogMsg       = lm
@@ -395,6 +421,7 @@ data WikiState = WikiState {
 type GititServerPart = ServerPartT (ReaderT WikiState IO)
 
 type Handler = GititServerPart Response
+
 
 -- Unescapes XML entities
 fromEntities :: String -> String

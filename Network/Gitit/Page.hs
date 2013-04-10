@@ -47,6 +47,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 module Network.Gitit.Page ( stringToPage
                           , pageToString
                           , readCategories
+                          , readMetadata
+                          , parseMetadata
                           )
 where
 import Network.Gitit.Types
@@ -152,6 +154,26 @@ pageToString conf page' =
                        else "")
   in  metadata' ++ (if null metadata' then "" else "\n") ++ pageText page'
 
+    
+
+readMetadata :: FilePath -> IO [(String, String)]
+readMetadata f =
+#if MIN_VERSION_base(4,5,0)
+  withFile f ReadMode $ \h ->
+#else
+  withFile (encodeString f) ReadMode $ \h ->
+#endif
+    catch (do fl <- B.hGetLine h
+              if dashline fl
+                 then do -- get rest of metadata
+                   rest <- hGetLinesTill h dotline
+                   let (md,_) = parseMetadata $ unlines $ "---":rest
+                   return md
+                 else return [])
+       (\e -> if isEOFError e then return [] else throwIO e)
+  
+
+-- XXXjn if above works, refactor this to use it (DRY!).
 -- | Read categories from metadata strictly.
 readCategories :: FilePath -> IO [String]
 readCategories f =

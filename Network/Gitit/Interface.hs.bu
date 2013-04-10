@@ -150,6 +150,22 @@ import Control.Monad (liftM, forM)
 import Data.FileStore (FileStore, FileStoreError(..), Revision(..), index, retrieve, latest, revision)
 import System.FilePath (dropExtension, takeExtension, (<.>), (</>))
 
+-- XXX ugh. lift must be in there somewhere.
+import Control.Exception (throwIO, catch)
+import Control.Monad.State
+import Control.Monad.Reader (ask)
+import Data.Maybe (isNothing, mapMaybe)
+import Network.Gitit.Cache (lookupCache, cacheContents)
+import Network.Gitit.Export (exportFormats)
+import Network.Gitit.Framework
+import Network.Gitit.Layout
+import Network.Gitit.Page (stringToPage)
+import Network.Gitit.Server
+import Network.Gitit.State
+import Network.Gitit.Types
+import Network.URI (isUnescapedInURI)
+import Network.URL (encString)
+
 -- | Returns the current wiki configuration.
 askConfig :: PluginM Config
 askConfig = liftM pluginConfig ask

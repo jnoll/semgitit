@@ -35,6 +35,7 @@ module Network.Gitit.ContentTransformer
   , showFile
   , preview
   , applyPreCommitPlugins
+  , applyPreEditPlugins
   -- * Cache support for transformers
   , cacheHtml
   , cachedHtml
@@ -124,7 +125,8 @@ runTransformer pathFor xform = withData $ \params -> do
                            , ctxTOC = tableOfContents cfg
                            , ctxBirdTracks = showLHSBirdTracks cfg
                            , ctxCategories = []
-                           , ctxMeta = [] }
+                           , ctxMeta = pMetaAttrs params 
+                           , ctxText = "" }
 
 -- | Converts a @ContentTransformer@ into a @GititServerPart@;
 -- specialized to wiki pages.
@@ -182,6 +184,30 @@ preview = runPageTransformer $
 -- modifying it.
 applyPreCommitPlugins :: String -> GititServerPart String
 applyPreCommitPlugins = runPageTransformer . applyPreCommitTransforms
+
+-- if no other plugin responds, this one will create a simple text
+-- area with contents to edit.  The plugin Monad environment includes
+-- PluginData and Context; the latter augmented with ctxText so
+-- plugins have access to the 'raw' text from editPage'.
+defaultEditAreaPlugin :: Html -> PluginM Html
+defaultEditAreaPlugin _ = do
+  raw <- liftM ctxText getContext -- askText
+  return  (textarea ! ([cols "80", name "editedText", identifier "editedText"]) << raw)
+
+
+noEditAreaPlugin :: Html -> PluginM Html
+noEditAreaPlugin _ = return noHtml
+
+-- XXX this just copied from applyPreCommitTransforms
+-- XXX Should take header and body as separate args.
+applyPreEditPlugins :: String -> Html -> GititServerPart Html
+applyPreEditPlugins s = runPageTransformer . applyPreEditTransforms s
+
+applyPreEditTransforms :: String -> Html -> ContentTransformer Html
+applyPreEditTransforms s c = do
+  modifyContext $ \ctx -> ctx{ ctxText = s }
+  getPreEditTransforms >>= foldM applyTransform c
+
 
 --
 -- Top level, composed transformers
@@ -399,6 +425,12 @@ getPreCommitTransforms = liftM (mapMaybe preCommitTransform) $
                           queryGititState plugins
   where preCommitTransform (PreCommitTransform x) = Just x
         preCommitTransform _                      = Nothing
+
+getPreEditTransforms :: ContentTransformer [Html -> PluginM Html]
+getPreEditTransforms = liftM (mapMaybe preEditTransform) $
+                          queryGititState plugins
+  where preEditTransform (PreEditTransform x) = Just x
+        preEditTransform _                    = Nothing
 
 -- | @applyTransform a t@ applies the transform @t@ to input @a@.
 applyTransform :: a -> (a -> PluginM a) -> ContentTransformer a

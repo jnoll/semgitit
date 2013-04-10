@@ -30,6 +30,7 @@
           $logo()$
           $if(sitenav)$
             $sitenav()$
+            $createbox()$
           $endif$
           $if(pagetools)$
             $pagetools()$

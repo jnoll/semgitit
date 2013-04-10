@@ -79,7 +79,12 @@ filledPageTemplate base' cfg layout htmlContents templ =
                            'h':'t':'t':'p':_  -> x
                            _                  -> base' ++ "/js/" ++ x
 
-      scripts  = ["jquery.min.js", "jquery-ui.packed.js", "footnotes.js"] ++ pgScripts layout
+      scripts  = ["jquery.min.js"
+                 , "jquery-ui.packed.js"
+                 , "footnotes.js"
+                 , "create.js"
+                 , "ckeditor/ckeditor.js"
+                 ] ++ pgScripts layout
       scriptLink x = script ! [src (prefixedScript x),
         thetype "text/javascript"] << noHtml
       javascriptlinks = renderHtmlFragment $ concatHtml $ map scriptLink scripts
