@@ -27,6 +27,14 @@ publication: {publication where this practice is described (url)}
 ...
 ">Practice</option>
 
+
+<option value="---
+format: markdown
+title: {short phrase about resource}
+categories: Resource
+...
+">Resource</option>
+
 <option value="---
 format: markdown
 type: Role
@@ -54,20 +62,10 @@ categories: Tool
 
 <option value="---
 format: markdown
-title: {short phrase about resource}
-categories: Resource
-...
-">Resource</option>
-
-<option value="
----
-format: markdown
 type: Publication
 title: {publication title}
 categories: Publication
 ...
-<!-- Replace '{...}' with text relevant to this publication. -->
-
 ">Publication</option>
 
 <option value="---
@@ -76,7 +74,6 @@ type: Method
 title: {research method name}
 categories: Method
 ...
-<!-- Replace '{...}' with text relevant to this research method. -->
 ">Method</option>
 
       </select>
