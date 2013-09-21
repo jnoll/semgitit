@@ -8,15 +8,54 @@
       <label><b>Title: </b></label>
       <input class="sg-meta" type="text" maxlength="128" size="32" name="meta_title" value="$title$"></input>
       <label><b>Lifecycle phase: </b></label>
-      <input class="sg-meta" type="text" maxlength="128" size="32" name="meta_lifecyclePhase" value="$lifecyclePhase$"></input>
+      <select name="meta_lifecyclePhase">
+	$option(val="Requirements"; isset=meta_lifecyclePhase_is_Requirements; name="Requirements"; )$
+	$option(val="Architecture"; isset=meta_lifecyclePhase_is_Architecture; name="Architecture&amp;Design")$
+	$option(val="Implementation"; isset=meta_lifecyclePhase_is_Implementation; name="Coding&amp;Implementation")$
+	$option(val="Testing"; isset=meta_lifecyclePhase_is_Testing; name="Testing&amp;QA")$
+	$option(val="Deployment"; isset=meta_lifecyclePhase_is_Deployment; name="Deployment")$
+	$option(val="Maintenance"; isset=meta_lifecyclePhase_is_Maintenance; name="Maintenance")$
+	$option(val="All"; isset=meta_lifecyclePhase_is_All; name="All")$
+	$option(val="NA"; isset=meta_lifecyclePhase_is_NA; name="Not Applicable")$
+      </select>
+
       <label><b>Product domain: </b></label>
-      <input class="sg-meta" type="text" maxlength="128" size="32" name="meta_domain" value="$domain$"></input>
-      <label><b>Type of practice: </b></label>
-      <input class="sg-meta" type="text" maxlength="128" size="32" name="meta_intervention" value="$intervention$"></input>
+      <select name="meta_domain">
+	$option(val="Medical"; isset=meta_domain_is_Medical; name="Medical/Health")$
+	$option(val="Finance"; isset=meta_domain_is_Finance; name="Financial Services")$
+	$option(val="Safety"; isset=meta_domain_is_Safety; name="Safety Critical")$
+	$option(val="Telecoms"; isset=meta_domain_is_Telecoms; name="Telecoms")$
+	$option(val="Automotive"; isset=meta_domain_is_Automotive; name="Automotive")$
+	$option(val="NA"; isset=meta_domain_is_NA; name="Not Applicable")$
+      </select>
+
+      <label><b>Intervention: </b></label>
+      <select name="meta_intervention">
+	$option(val="Infractructure"; isset=meta_intervention_is_Infrastructure; name="Infrastructure")$
+	$option(val="Management"; isset=meta_intervention_is_Management; name="Management")$
+	$option(val="Organizatio"; isset=meta_intervention_is_Organization; name="Organization")$
+	$option(val="Process"; isset=meta_intervention_is_Process; name="Process")$
+	$option(val="Standards"; isset=meta_intervention_is_Standards; name="Standards")$
+      </select>
+
       <label><b>Research area: </b></label>
-      <input class="sg-meta" type="text" maxlength="128" size="32" name="meta_researchArea" value="$researchArea$"></input>
+      <select name="meta_researchArea">
+	$option(val="Agile"; isset=meta_researchArea_is_Agile; name="Agile")$
+	$option(val="Colocated"; isset=meta_researchArea_is_Colocated; name="Co-located")$
+	$option(val="GSD"; isset=meta_researchArea_is_GSD; name="Global Software Development")$
+	$option(val="InnerSource"; isset=meta_researchArea_is_InnerSource; name="Inner Source")$
+	$option(val="Lean"; isset=meta_researchArea_is_Lean; name="Lean")$
+	$option(val="MultiNationals"; isset=meta_researchArea_is_MultiNationals; name="Multi-Nationals")$
+	$option(val="OpenSource"; isset=meta_researchArea_is_OpenSource; name="Open Source")$
+	$option(val="PlanDriven"; isset=meta_researchArea_is_PlanDriven; name="Plan Driven")$
+	$option(val="SMEs"; isset=meta_researchArea_is_SMEs; name="SMEs")$
+	$option(val="VSEs"; isset=meta_researchArea_is_VSEs; name="Very Small Orgs")$
+	$option(val="Any"; isset=meta_researchArea_is_Any; name="Any")$
+      </select>
+
       <label><b>Conditions: </b></label>
       <input class="sg-meta" type="text" maxlength="128" size="32" name="meta_conditions" value="$conditions$"></input>
+
       <label><b>Summary: </b></label>
       <input class="sg-meta" type="text" maxlength="128" size="32" name="meta_summary" value="$summary$"></inpupt>
 
