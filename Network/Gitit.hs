@@ -198,6 +198,8 @@ wikiHandlers =
       , method POST >>
           authenticate ForModify (unlessNoDelete deletePage showPage) ]
   , dir "_preview" preview
+  , dir "_run" showCmd
+  , dir "cgi-bin" showCGI       -- so named to make porting existing apps easier
   , guardIndex >> indexPage
   , guardCommand "export" >> exportPage
   , method POST >> guardCommand "cancel" >> showPage

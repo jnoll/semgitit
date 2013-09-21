@@ -29,6 +29,8 @@ module Network.Gitit.ContentTransformer
   -- * Gitit responders
   , showRawPage
   , showFileAsText
+  , showCmd
+  , showCGI    
   , showPage
   , exportPage
   , showHighlightedSource
@@ -73,6 +75,7 @@ where
 import Control.Exception (throwIO, catch)
 import Control.Monad.State
 import Control.Monad.Reader (ask)
+import Data.List (intercalate)
 import Data.Maybe (isNothing, mapMaybe)
 import Network.Gitit.Cache (lookupCache, cacheContents)
 import Network.Gitit.Export (exportFormats)
@@ -85,7 +88,13 @@ import Network.Gitit.Types
 import Network.URI (isUnescapedInURI)
 import Network.URL (encString)
 import Prelude hiding (catch)
+import System.Directory (getCurrentDirectory)
 import System.FilePath
+import System.Process -- (createProcess, CreateProcess, proc)
+import System.Exit (ExitCode(ExitSuccess))
+import System.IO (readFile, hGetContents, hGetLine, hPutStr, hClose)
+import System.IO.Error (try, isEOFError)
+import System.SetEnv (setEnv)
 import Text.HTML.SanitizeXSS (sanitizeBalance)
 import Text.Highlighting.Kate
 import Text.Pandoc hiding (MathML, WebTeX, MathJax)
@@ -158,6 +167,14 @@ showFileAsText = runFileTransformer rawTextResponse
 -- | Responds with rendered wiki page.
 showPage :: Handler
 showPage = runPageTransformer htmlViaPandoc
+
+-- | Output from CGI-style command rendered as wiki page.
+showCmd :: Handler
+showCmd = runFileTransformer htmlViaCmd
+
+-- | Output from CGI-style command rendered as wiki page.
+showCGI :: Handler
+showCGI = runFileTransformer rawViaCmd
 
 -- | Responds with page exported into selected format.
 exportPage :: Handler
@@ -252,6 +269,31 @@ highlightRawSource =
      applyWikiTemplate >>=
      cacheHtml)
 
+
+-- | Responds with output from running external program.  Similar to a
+-- CGI invocation except output from program is expected to fit into
+-- Gitit page.  No caching.
+htmlViaCmd :: ContentTransformer Response
+htmlViaCmd =
+    updateLayout (\l -> l { pgTabs = [ViewTab] }) >>
+    runCmd >>= 
+    applyWikiTemplate
+
+-- | Responds with raw output from running external program.  Similar
+-- to htmlViaCmd, except output is returned untouched.
+rawViaCmd :: ContentTransformer Response
+rawViaCmd = do
+  params <- lookPairs
+  cmd <- getFileName
+  cfg <- lift getConfig
+  rslt <- liftIO $ runCGI cmd (staticDir cfg) params 
+  let (ctype:blnk:body) = lines rslt
+  if (head $ words ctype) == "Content-type:" then
+    return $ toResponse $ unlines body
+    else 
+    return $ toResponse rslt
+
+
 --
 -- Cache support for transformers
 --
@@ -293,6 +335,49 @@ rawContents = do
   let rev = pRevision params
   liftIO $ catch (liftM Just $ FS.retrieve fs file rev)
                  (\e -> if e == FS.NotFound then return Nothing else throwIO e)
+
+-- | Get result of running command. 
+runCmd :: ContentTransformer Html
+runCmd = do
+  params <- lookPairs
+  cmd <- getFileName
+  cfg <- lift getConfig
+  output <- liftIO $ runCGI cmd (staticDir cfg) params
+  return $ primHtml output
+  
+-- | run 'cmd' in a CGI-like environment.
+runCGI :: FilePath -> FilePath -> [(String, Either FilePath String)] -> IO String
+runCGI cmd wd params = do
+  let qs = intercalate "&" $ map (\(k, v) ->  k ++ "=" ++ (valueOf v))  params
+  let cl = show $ length qs
+  pwd <- getCurrentDirectory
+  let cmdPath = pwd </> wd </> "cgi" </> cmd
+  (Just hin, Just hout, Just herr, jHandle) <-
+
+    createProcess (proc (cmdPath) []) {cwd = Just wd
+                                   , std_in = CreatePipe
+                                   , std_out = CreatePipe
+                                   , std_err = CreatePipe 
+                                   , env = Just [("REQUEST_METHOD", "POST"), ("CONTENT_LENGTH", cl)]
+                                  }
+  try $ hPutStr hin qs
+  try $ hClose hin
+  contents <- try $ hGetContents hout -- assumes cmd output is html w/o mime header
+  err <- try $ hGetContents herr
+  ec  <- waitForProcess jHandle
+  if ec == ExitSuccess
+     then case contents of
+       Right c -> return c
+       Left e -> if isEOFError e
+                then return ""
+                else ioError e
+     else case err of
+       Right c -> return $ ("<p>runCGI:cmd <code>'" ++ cmdPath ++ "'</code><br/>produced error output: <br/><pre>'" ++ c ++ "'</pre> with exit code:<pre>'" ++ (show ec) ++"</pre></p>")
+       Left e -> if isEOFError e
+                then return $ ("<p><pre>runCGI:cmd <code>'" ++ cmdPath ++ "'</code><br/>produced no error output, with exit code:<pre>'" ++ (show ec) ++ "</pre></p>")
+                else ioError e
+
+  
 
 --
 -- Response-generating combinators
