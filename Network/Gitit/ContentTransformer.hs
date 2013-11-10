@@ -42,6 +42,7 @@ module Network.Gitit.ContentTransformer
   , cacheHtml
   , cachedHtml
   -- * Content retrieval combinators
+  , retrievePage
   , rawContents
   -- * Response-generating combinators
   , textResponse
@@ -72,7 +73,7 @@ module Network.Gitit.ContentTransformer
   )
 where
 
-import Control.Exception (throwIO, catch)
+import Control.Exception (throwIO, try, catch)
 import Control.Monad.State
 import Control.Monad.Reader (ask)
 import Data.List (intercalate)
@@ -88,12 +89,12 @@ import Network.Gitit.Types
 import Network.URI (isUnescapedInURI)
 import Network.URL (encString)
 import Prelude hiding (catch)
-import System.Directory (getCurrentDirectory)
+import System.Directory (getCurrentDirectory, doesFileExist)
 import System.FilePath
 import System.Process -- (createProcess, CreateProcess, proc)
 import System.Exit (ExitCode(ExitSuccess))
-import System.IO (readFile, hGetContents, hGetLine, hPutStr, hClose)
-import System.IO.Error (try, isEOFError)
+import System.IO (readFile,  hGetContents, hGetLine, hPutStr, hClose)
+import System.IO.Error (isEOFError)
 import System.SetEnv (setEnv)
 import Text.HTML.SanitizeXSS (sanitizeBalance)
 import Text.Highlighting.Kate
@@ -326,15 +327,48 @@ cachedHtml = do
 -- Content retrieval combinators
 --
 
+-- contents of file in static dir
+retrieveStaticPage :: FilePath -> IO (Maybe String)
+retrieveStaticPage file = do
+  b <- doesFileExist file 
+  if b then do
+    c <- readFile file
+    return $ Just c
+    else return Nothing
+
+  
+retrieveFileStorePage :: FS.FileStore -> FilePath -> Maybe String -> IO (Maybe String)
+retrieveFileStorePage fs file rev = do
+  r <- try (FS.retrieve fs file rev)
+  case r :: Either FS.FileStoreError String of
+    Right contents -> return $ Just contents
+    Left FS.NotFound -> return Nothing
+    Left e -> throwIO e
+
+retrievePage :: FS.FileStore -> FilePath -> Maybe String -> FilePath -> IO (Maybe String)
+retrievePage fs file rev static_dir = do
+  r <- liftIO $ retrieveFileStorePage fs file rev
+  case r of
+    Just c ->  return $ Just c
+    Nothing -> do
+      r' <- liftIO $ retrieveStaticPage $ static_dir </> "page" </> file
+      case r' of
+        Just c' -> return $ Just c'
+        Nothing -> return Nothing
+
 -- | Returns raw file contents.
 rawContents :: ContentTransformer (Maybe String)
 rawContents = do
   params <- getParams
   file <- getFileName
   fs <- lift getFileStore
+  cfg <- lift getConfig
+  let static_dir = staticDir cfg
   let rev = pRevision params
-  liftIO $ catch (liftM Just $ FS.retrieve fs file rev)
-                 (\e -> if e == FS.NotFound then return Nothing else throwIO e)
+  c <- liftIO $ retrievePage fs file rev static_dir
+  return c
+--  return $ liftIO $ catch (FS.retrieve fs file rev) 
+--    (\e -> if e == FS.NotFound then return rawStaticContents file else throwIO e)
 
 -- | Get result of running command. 
 runCmd :: ContentTransformer Html
@@ -360,8 +394,8 @@ runCGI cmd wd params = do
                                    , std_err = CreatePipe 
                                    , env = Just [("REQUEST_METHOD", "POST"), ("CONTENT_LENGTH", cl)]
                                   }
-  try $ hPutStr hin qs
-  try $ hClose hin
+  try $ hPutStr hin qs :: IO (Either IOError ()) 
+  try $ hClose hin :: IO (Either IOError ()) 
   contents <- try $ hGetContents hout -- assumes cmd output is html w/o mime header
   err <- try $ hGetContents herr
   ec  <- waitForProcess jHandle
@@ -391,7 +425,7 @@ textResponse (Just c) = mimeResponse c "text/plain; charset=utf-8"
 -- | Converts raw contents to a response that is appropriate with
 -- a mime type derived from the page's extension.
 mimeFileResponse :: Maybe String -> ContentTransformer Response
-mimeFileResponse Nothing = error "Unable to retrieve file contents."
+mimeFileResponse Nothing = error "Unable to retrieveo file contents."
 mimeFileResponse (Just c) =
   mimeResponse c =<< lift . getMimeTypeForExtension . takeExtension =<< getFileName
 

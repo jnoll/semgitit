@@ -226,9 +226,11 @@ getPageContentsAndRev page = do
     Just r -> return (r, contents)
     Nothing -> return ("", contents)
   
-getPageContents :: String -> PluginM String
+getPageContents :: String -> PluginM (Maybe String)
 getPageContents page = do
-  (_, c) <- getPageContentsAndRev page
-  return c
-
-
+  fs <- askFileStore
+  cfg <- askConfig
+  let file = pathForPage page
+  let static_dir = staticDir cfg
+  contents <- liftIO $ retrievePage fs file Nothing static_dir
+  return contents
